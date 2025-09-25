@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, RefObject } from 'react';
 import type { EpubData } from '../types';
 import { useSpeechSynthesis } from '../hooks/useSpeechSynthesis';
 import Loader from './Loader';
@@ -18,6 +18,33 @@ interface AudioPlayerProps {
   epubData: EpubData;
   onBackToLibrary: () => void;
 }
+
+// Hook para detectar clics fuera de un elemento
+type Event = MouseEvent | TouchEvent;
+const useClickOutside = <T extends HTMLElement = HTMLElement>(
+  ref: RefObject<T>,
+  handler: (event: Event) => void
+) => {
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const el = ref?.current;
+      // No hacer nada si se hace clic en el elemento de la ref o en sus descendientes
+      if (!el || el.contains((event?.target as Node) || null)) {
+        return;
+      }
+      handler(event);
+    };
+
+    document.addEventListener('mousedown', listener);
+    document.addEventListener('touchstart', listener);
+
+    return () => {
+      document.removeEventListener('mousedown', listener);
+      document.removeEventListener('touchstart', listener);
+    };
+  }, [ref, handler]);
+};
+
 
 const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) => {
   const { title, coverUrl } = epubData;
@@ -49,6 +76,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
   } = useSpeechSynthesis(epubData);
 
   const [isTimerMenuOpen, setIsTimerMenuOpen] = useState(false);
+  const timerMenuRef = useRef<HTMLDivElement>(null);
+
+  useClickOutside(timerMenuRef, () => {
+    if (isTimerMenuOpen) {
+      setIsTimerMenuOpen(false);
+    }
+  });
 
   const handlePlayPause = useCallback(() => {
     if (isSpeaking) {
@@ -60,10 +94,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
     }
   }, [isSpeaking, isPaused, pause, resume, play, currentChapterIndex, currentChunkIndex]);
 
-  const handleSkip = useCallback((words: number) => {
-    const avgCharsPerWord = 5; // Heuristic
-    skip(words * avgCharsPerWord);
-  }, [skip]);
+  const handleSkipSeconds = useCallback((seconds: number) => {
+    // Estimación: ~15 caracteres por segundo a velocidad 1x.
+    const charsPerSecond = 15 * playbackRate;
+    skip(Math.round(seconds * charsPerSecond));
+  }, [skip, playbackRate]);
 
 
   const progressPercentage = useMemo(() => {
@@ -173,7 +208,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
         </button>
 
         <div className="flex items-center justify-center space-x-4">
-            <button onClick={() => handleSkip(-15)} aria-label="Retroceder 15 palabras" className="text-subtle-text dark:text-dark-subtle-text hover:text-dark-text dark:hover:text-light-text transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled={!isSpeaking && !isPaused}>
+            <button onClick={() => handleSkipSeconds(-15)} aria-label="Retroceder 15 segundos" className="text-subtle-text dark:text-dark-subtle-text hover:text-dark-text dark:hover:text-light-text transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled={!isSpeaking && !isPaused}>
                 <Replay15Icon className="w-8 h-8" />
             </button>
             <button
@@ -185,7 +220,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
             >
                 {isSpeaking ? <PauseIcon className="w-10 h-10" /> : <PlayIcon className="w-10 h-10 ml-1" />}
             </button>
-            <button onClick={() => handleSkip(15)} aria-label="Adelantar 15 palabras" className="text-subtle-text dark:text-dark-subtle-text hover:text-dark-text dark:hover:text-light-text transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled={!isSpeaking && !isPaused}>
+            <button onClick={() => handleSkipSeconds(15)} aria-label="Adelantar 15 segundos" className="text-subtle-text dark:text-dark-subtle-text hover:text-dark-text dark:hover:text-light-text transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled={!isSpeaking && !isPaused}>
                 <Forward15Icon className="w-8 h-8" />
             </button>
         </div>
@@ -228,7 +263,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
                     className="w-full h-2 bg-border-color rounded-lg appearance-none cursor-pointer dark:bg-dark-border-color accent-primary-accent dark:accent-dark-primary-accent"
                 />
            </div>
-           <div className="relative">
+           <div className="relative" ref={timerMenuRef}>
               <label className="block text-sm font-medium text-subtle-text dark:text-dark-subtle-text mb-1 text-center">Timer</label>
               <button 
                 onClick={() => setIsTimerMenuOpen(prev => !prev)} 

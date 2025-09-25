@@ -3,10 +3,6 @@ import type { EpubData } from '../types';
 
 const CHUNK_CHAR_LIMIT = 250;
 
-// A silent audio file to keep the media session active in the background. WAV is more universally supported for data URIs.
-const SILENT_AUDIO_URL = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
-
-
 const chunkText = (text: string): string[] => {
   if (!text) return [];
   const chunks: string[] = [];
@@ -52,8 +48,8 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
 
   const chapterChunks = useRef<string[][]>([]);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const silentAudioRef = useRef<HTMLAudioElement | null>(null);
   const progressRef = useRef({ chapter: 0, chunk: 0 });
+  const watchdogTimerRef = useRef<number | null>(null);
 
   // Keep progress ref updated for intervals and cleanup functions
   useEffect(() => {
@@ -72,18 +68,6 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
         }));
     }
   }, [progressKey]);
-
-  // Initialize silent audio for background playback
-  useEffect(() => {
-    const audio = new Audio(SILENT_AUDIO_URL);
-    audio.loop = true;
-    silentAudioRef.current = audio;
-
-    return () => {
-        silentAudioRef.current?.pause();
-        silentAudioRef.current = null;
-    }
-  }, []);
   
   // Load progress on mount
   useEffect(() => {
@@ -190,13 +174,13 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
   
   const pause = useCallback((fromTimer = false) => {
     if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
       window.speechSynthesis.pause();
-      silentAudioRef.current?.pause();
       setIsPaused(true);
       setIsSpeaking(false);
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'paused';
-      }
       if (!fromTimer) { // Don't save progress if paused by timer, let user resume
           saveProgress();
       }
@@ -232,20 +216,20 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
 
 
   const cancel = useCallback(() => {
+    if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+    }
     if (window.speechSynthesis) {
       utteranceRef.current = null;
       window.speechSynthesis.cancel();
     }
-    silentAudioRef.current?.pause();
     setIsSpeaking(false);
     setIsPaused(false);
     setCurrentCharIndex(0);
-    if ('mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'paused';
-    }
     saveProgress(); // Save state on cancellation (e.g., chapter change)
   }, [saveProgress]);
-  
+
   const speak = useCallback((chapterIdx: number, chunkIdx: number, startCharIndex = 0) => {
     if (!window.speechSynthesis || !epubData) {
       setError("Tu navegador no soporta la síntesis de voz.");
@@ -268,6 +252,28 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     }
     utterance.rate = playbackRate;
     
+    // Clear any previous watchdog
+    if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+    }
+    // Watchdog for stuck synthesis
+    const estimatedDurationMs = (textToSpeak.length / (15 * playbackRate)) * 1000;
+    const watchdogTimeout = estimatedDurationMs + 10000; // 10-second buffer
+
+    watchdogTimerRef.current = window.setTimeout(() => {
+        console.warn('Speech synthesis watchdog triggered. Advancing.');
+        cancel(); 
+        const nextChunkIndex = chunkIdx + 1;
+        if (nextChunkIndex < chapterChunks.current[chapterIdx]?.length) {
+            speak(chapterIdx, nextChunkIndex);
+        } else {
+            const nextChapterIndex = chapterIdx + 1;
+            if (nextChapterIndex < chapterChunks.current.length) {
+                speak(nextChapterIndex, 0);
+            }
+        }
+    }, watchdogTimeout);
+    
     utterance.onboundary = (event) => {
         if (event.name === 'word') {
             setCurrentCharIndex(startCharIndex + event.charIndex);
@@ -275,6 +281,10 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     };
 
     utterance.onend = () => {
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
       if (utteranceRef.current !== utterance) return;
       setCurrentCharIndex(0);
 
@@ -298,10 +308,6 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
           speak(nextChapterIndex, 0);
         } else {
           setIsSpeaking(false);
-          silentAudioRef.current?.pause();
-          if ('mediaSession' in navigator) {
-            navigator.mediaSession.playbackState = 'paused';
-          }
         }
       }
     };
@@ -317,15 +323,11 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utterance);
-    silentAudioRef.current?.play().catch(e => console.error("Error playing silent audio:", e.message));
     setIsSpeaking(true);
     setIsPaused(false);
     setCurrentChapterIndex(chapterIdx);
     setCurrentChunkIndex(chunkIdx);
     setCurrentCharIndex(startCharIndex);
-    if ('mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'playing';
-    }
 
   }, [cancel, voices, selectedVoiceURI, playbackRate, epubData, sleepTimer, pause]);
 
@@ -336,14 +338,23 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
   const resume = useCallback(() => {
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
-      silentAudioRef.current?.play().catch(e => console.error("Error playing silent audio:", e.message));
       setIsPaused(false);
       setIsSpeaking(true);
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.playbackState = 'playing';
-      }
     }
   }, []);
+
+  // Pause speech when tab becomes hidden (addresses background playback)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && isSpeaking) {
+        pause();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isSpeaking, pause]);
   
   const jumpToChapter = useCallback((chapterIdx: number, chunkIdx: number = 0) => {
       cancel();
@@ -421,45 +432,6 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     }
   }, [isSpeaking, isPaused, currentChapterIndex, currentChunkIndex, currentCharIndex, play, chapters.length]);
   
-  // Media Session API integration
-  useEffect(() => {
-    if (!epubData || !('mediaSession' in navigator)) {
-        return;
-    }
-
-    navigator.mediaSession.metadata = new MediaMetadata({
-        title: `Capítulo ${currentChapterIndex + 1}`,
-        artist: epubData.title,
-        artwork: epubData.coverUrl ? [{ src: epubData.coverUrl }] : [],
-    });
-
-  }, [epubData, currentChapterIndex]);
-
-  useEffect(() => {
-    if (!('mediaSession' in navigator)) {
-        return;
-    }
-
-    const handlePlayAction = () => {
-        if(isPaused) resume();
-        else play(currentChapterIndex, currentChunkIndex);
-    }
-
-    navigator.mediaSession.setActionHandler('play', handlePlayAction);
-    navigator.mediaSession.setActionHandler('pause', () => pause(false)); // Ensure it's a user pause
-    navigator.mediaSession.setActionHandler('previoustrack', handlePrevChapter);
-    navigator.mediaSession.setActionHandler('nexttrack', handleNextChapter);
-
-    return () => {
-      if ('mediaSession' in navigator) {
-        navigator.mediaSession.setActionHandler('play', null);
-        navigator.mediaSession.setActionHandler('pause', null);
-        navigator.mediaSession.setActionHandler('previoustrack', null);
-        navigator.mediaSession.setActionHandler('nexttrack', null);
-      }
-    }
-  }, [isPaused, resume, play, currentChapterIndex, currentChunkIndex, pause, handlePrevChapter, handleNextChapter]);
-
 
   useEffect(() => {
     return () => cancel();

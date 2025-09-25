@@ -166,6 +166,13 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
   }, [playbackRate]);
 
   useEffect(() => {
+    // Si hay una locución en curso, actualiza su velocidad dinámicamente.
+    if (window.speechSynthesis.speaking && utteranceRef.current) {
+      utteranceRef.current.rate = playbackRate;
+    }
+  }, [playbackRate]);
+
+  useEffect(() => {
     chapterChunks.current = chapters.map(chunkText);
     setCurrentChapterIndex(prev => Math.min(prev, chapters.length - 1));
     setCurrentChunkIndex(prev => chapters.length > 0 ? prev : 0);

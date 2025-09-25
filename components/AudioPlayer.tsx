@@ -87,15 +87,28 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
 
   const handlePlayPause = useCallback(() => {
     const audio = silentAudioRef.current;
+    if (!audio) return;
+
     if (isSpeaking) {
       pause();
-      audio?.pause();
-    } else if (isPaused) {
-      resume();
-      audio?.play().catch(e => console.error("Error al reproducir audio silencioso:", e));
-    } else {
-      play(currentChapterIndex, currentChunkIndex);
-      audio?.play().catch(e => console.error("Error al reproducir audio silencioso:", e));
+      if (!audio.paused) {
+        audio.pause();
+      }
+    } else { // Covers isPaused and stopped states
+      if (isPaused) {
+        resume();
+      } else {
+        play(currentChapterIndex, currentChunkIndex);
+      }
+
+      if (audio.paused) {
+        audio.play().catch(e => {
+            // This error is expected if the user rapidly clicks play/pause. It can be safely ignored.
+            if (e.name !== 'AbortError') {
+                 console.error("Error al reproducir audio silencioso:", e);
+            }
+        });
+      }
     }
   }, [isSpeaking, isPaused, pause, resume, play, currentChapterIndex, currentChunkIndex]);
 

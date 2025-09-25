@@ -263,7 +263,23 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     window.speechSynthesis.resume();
     setIsSpeaking(true);
     setIsPaused(false);
-  }, []);
+
+    // Re-establish watchdog
+    const utterance = utteranceRef.current;
+    if (utterance) {
+        clearWatchdog(); // Clear any old one just in case
+        lastBoundaryTimeRef.current = Date.now();
+        watchdogTimerRef.current = window.setInterval(() => {
+            if (Date.now() - lastBoundaryTimeRef.current > 4000) {
+                console.warn("Speech synthesis watchdog (resume) triggered. Advancing...");
+                // Manually trigger the end event to un-stick the playback chain
+                if(utterance.onend) {
+                    utterance.onend(new SpeechSynthesisEvent('end', { utterance }));
+                }
+            }
+        }, 2000);
+    }
+  }, [clearWatchdog]);
 
   const jumpToChapter = useCallback((chapterIdx: number, playOnJump: boolean) => {
     setCurrentChapterIndex(chapterIdx);

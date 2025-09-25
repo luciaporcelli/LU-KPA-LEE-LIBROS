@@ -19,6 +19,18 @@ const App: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const { epubData, isLoading, error, reset: resetParser } = useEpubParser(fileToParse);
 
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then(registration => {
+          console.log('Service Worker registered with scope:', registration.scope);
+        })
+        .catch(error => {
+          console.error('Service Worker registration failed:', error);
+        });
+    }
+  }, []);
+
   // Load library from local storage on initial mount
   useEffect(() => {
     try {

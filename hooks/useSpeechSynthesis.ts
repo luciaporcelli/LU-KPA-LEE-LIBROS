@@ -49,6 +49,7 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
   const chapterChunks = useMemo(() => epubData?.chapters.map(chunkText) ?? [], [epubData]);
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const watchdogTimerRef = useRef<number | null>(null);
+  const lastBoundaryTimeRef = useRef<number>(Date.now());
   const speakRef = useRef<((chapterIdx: number, chunkIdx: number, charIdx?: number) => void) | null>(null);
   
   const playbackStateRef = useRef({ isSpeaking, isPaused });
@@ -135,13 +136,13 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
       clearInterval(voiceInterval);
       window.speechSynthesis.onvoiceschanged = null;
       window.speechSynthesis.cancel();
-      if(watchdogTimerRef.current) clearTimeout(watchdogTimerRef.current);
+      if(watchdogTimerRef.current) clearInterval(watchdogTimerRef.current);
     };
   }, []);
 
   const clearWatchdog = useCallback(() => {
     if (watchdogTimerRef.current) {
-      clearTimeout(watchdogTimerRef.current);
+      clearInterval(watchdogTimerRef.current);
       watchdogTimerRef.current = null;
     }
   }, []);
@@ -170,6 +171,7 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     utterance.rate = playbackRate;
     
     utterance.onboundary = (event) => {
+      lastBoundaryTimeRef.current = Date.now();
       if (event.name === 'word') {
         setCurrentCharIndex(charIdx + event.charIndex);
       }
@@ -213,14 +215,15 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     // Do not call cancel here; it's handled by play(), skip(), etc.
     window.speechSynthesis.speak(utterance);
     
-    const estimatedDurationMs = (textToSpeak.length / (15 * playbackRate)) * 1000;
-    const watchdogTimeout = Math.max(5000, estimatedDurationMs + 10000); // Min 5s
-    watchdogTimerRef.current = window.setTimeout(() => {
-      if (utteranceRef.current === utterance && window.speechSynthesis.speaking) {
+    lastBoundaryTimeRef.current = Date.now();
+    // Intelligent watchdog: check every 2 seconds if speech has been stuck for over 4 seconds
+    watchdogTimerRef.current = window.setInterval(() => {
+      if (Date.now() - lastBoundaryTimeRef.current > 4000) {
         console.warn("Speech synthesis watchdog triggered. Advancing...");
+        // Manually trigger the end event to un-stick the playback chain
         utterance.onend?.(new SpeechSynthesisEvent('end', { utterance }));
       }
-    }, watchdogTimeout);
+    }, 2000);
 
   }, [chapterChunks, voices, selectedVoiceURI, playbackRate, clearWatchdog, pause, setSleepTimer]);
 

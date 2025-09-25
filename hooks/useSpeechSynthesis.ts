@@ -166,76 +166,11 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
   }, [playbackRate]);
 
   useEffect(() => {
-    // Si hay una locución en curso, actualiza su velocidad dinámicamente.
-    if (window.speechSynthesis.speaking && utteranceRef.current) {
-      utteranceRef.current.rate = playbackRate;
-    }
-  }, [playbackRate]);
-
-  useEffect(() => {
     chapterChunks.current = chapters.map(chunkText);
     setCurrentChapterIndex(prev => Math.min(prev, chapters.length - 1));
     setCurrentChunkIndex(prev => chapters.length > 0 ? prev : 0);
     setCurrentCharIndex(0);
   }, [chapters]);
-  
-  const pause = useCallback((fromTimer = false) => {
-    if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
-      if (watchdogTimerRef.current) {
-        clearTimeout(watchdogTimerRef.current);
-        watchdogTimerRef.current = null;
-      }
-      window.speechSynthesis.pause();
-      setIsPaused(true);
-      setIsSpeaking(false);
-      if (!fromTimer) { // Don't save progress if paused by timer, let user resume
-          saveProgress();
-      }
-    }
-  }, [saveProgress]);
-
-  // Sleep Timer logic
-  useEffect(() => {
-    if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-    }
-
-    if (isSpeaking && typeof sleepTimer === 'number' && sleepTimer > 0) {
-        timerIntervalRef.current = window.setInterval(() => {
-            setSleepTimer(prevTime => {
-                if (typeof prevTime === 'number' && prevTime > 1) {
-                    return prevTime - 1;
-                } else {
-                    pause(true); // Pause without saving progress
-                    return null; // Reset timer
-                }
-            });
-        }, 1000);
-    }
-
-    return () => {
-        if (timerIntervalRef.current) {
-            clearInterval(timerIntervalRef.current);
-        }
-    };
-  }, [isSpeaking, sleepTimer, pause]);
-
-
-  const cancel = useCallback(() => {
-    if (watchdogTimerRef.current) {
-        clearTimeout(watchdogTimerRef.current);
-        watchdogTimerRef.current = null;
-    }
-    if (window.speechSynthesis) {
-      utteranceRef.current = null;
-      window.speechSynthesis.cancel();
-    }
-    setIsSpeaking(false);
-    setIsPaused(false);
-    setCurrentCharIndex(0);
-    saveProgress(); // Save state on cancellation (e.g., chapter change)
-  }, [saveProgress]);
 
   const speak = useCallback((chapterIdx: number, chunkIdx: number, startCharIndex = 0) => {
     if (!window.speechSynthesis || !epubData) {
@@ -245,7 +180,8 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     
     const fullChunkText = chapterChunks.current[chapterIdx]?.[chunkIdx];
     if (!fullChunkText) {
-        cancel();
+        // This can happen if chapters are not loaded yet or index is out of bounds
+        // We shouldn't call cancel here as it might be part of a normal cleanup.
         return;
     }
 
@@ -269,12 +205,15 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
 
     watchdogTimerRef.current = window.setTimeout(() => {
         console.warn('Speech synthesis watchdog triggered. Advancing.');
-        cancel(); 
-        const nextChunkIndex = chunkIdx + 1;
-        if (nextChunkIndex < chapterChunks.current[chapterIdx]?.length) {
-            speak(chapterIdx, nextChunkIndex);
+        if (utteranceRef.current !== utterance) return; // A new speech has already started
+
+        const { chapter, chunk } = progressRef.current; // Use the latest progress from ref
+        const nextChunkIndex = chunk + 1;
+
+        if (nextChunkIndex < chapterChunks.current[chapter]?.length) {
+            speak(chapter, nextChunkIndex);
         } else {
-            const nextChapterIndex = chapterIdx + 1;
+            const nextChapterIndex = chapter + 1;
             if (nextChapterIndex < chapterChunks.current.length) {
                 speak(nextChapterIndex, 0);
             }
@@ -303,8 +242,14 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
         speak(chapterIdx, nextChunkIndex);
       } else {
         if (sleepTimer === 'end-of-chapter') {
-            pause(true);
-            setSleepTimer(null);
+            // Logic to pause handled inside pause function call
+            setSleepTimer(null); // Reset timer state
+            // Explicitly call pause here
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.pause();
+            }
+            setIsSpeaking(false);
+            setIsPaused(true);
             return;
         }
 
@@ -320,15 +265,13 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     };
 
     utterance.onerror = (event) => {
-      // 'canceled' and 'interrupted' are expected behaviors in this app, not errors.
-      // 'canceled' happens when we intentionally stop speech (e.g., skip chapter, skip time).
-      // 'interrupted' can happen if a new speech command is issued before the old one finishes.
       if (event.error === 'interrupted' || event.error === 'canceled') {
         return;
       }
       console.error('SpeechSynthesisUtterance.onerror', event);
       setError(`Ocurrió un error en la síntesis de voz: ${event.error}`);
-      cancel();
+      setIsSpeaking(false);
+      setIsPaused(false);
     };
     
     window.speechSynthesis.cancel();
@@ -339,21 +282,84 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     setCurrentChunkIndex(chunkIdx);
     setCurrentCharIndex(startCharIndex);
 
-  }, [cancel, voices, selectedVoiceURI, playbackRate, epubData, sleepTimer, pause]);
+  }, [voices, selectedVoiceURI, playbackRate, epubData, sleepTimer]);
 
   const play = useCallback((chapterIdx: number, chunkIdx: number, startCharIndex = 0) => {
     speak(chapterIdx, chunkIdx, startCharIndex);
   }, [speak]);
+  
+  const pause = useCallback((fromTimer = false) => {
+    if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
+      if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+      }
+      window.speechSynthesis.pause();
+      setIsPaused(true);
+      setIsSpeaking(false);
+      if (!fromTimer) {
+          saveProgress();
+      }
+    }
+  }, [saveProgress]);
+
+  // Sleep Timer logic
+  useEffect(() => {
+    if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+    }
+
+    if (isSpeaking && typeof sleepTimer === 'number' && sleepTimer > 0) {
+        timerIntervalRef.current = window.setInterval(() => {
+            setSleepTimer(prevTime => {
+                if (typeof prevTime === 'number' && prevTime > 1) {
+                    return prevTime - 1;
+                } else {
+                    pause(true); 
+                    return null; 
+                }
+            });
+        }, 1000);
+    }
+
+    return () => {
+        if (timerIntervalRef.current) {
+            clearInterval(timerIntervalRef.current);
+        }
+    };
+  }, [isSpeaking, sleepTimer, pause]);
+
+
+  const cancel = useCallback(() => {
+    if (watchdogTimerRef.current) {
+        clearTimeout(watchdogTimerRef.current);
+        watchdogTimerRef.current = null;
+    }
+    if (window.speechSynthesis) {
+      if (utteranceRef.current) utteranceRef.current.onend = null;
+      utteranceRef.current = null;
+      window.speechSynthesis.cancel();
+    }
+    setIsSpeaking(false);
+    setIsPaused(false);
+    setCurrentCharIndex(0);
+    saveProgress(); 
+  }, [saveProgress]);
 
   const resume = useCallback(() => {
     if (window.speechSynthesis.paused) {
       window.speechSynthesis.resume();
       setIsPaused(false);
       setIsSpeaking(true);
+    } else if (isPaused) {
+      // We were "paused" by app logic (like rate change), not browser pause.
+      // Restart speech from the last known character position.
+      play(currentChapterIndex, currentChunkIndex, currentCharIndex);
     }
-  }, []);
+  }, [isPaused, play, currentChapterIndex, currentChunkIndex, currentCharIndex]);
 
-  // Pause speech when tab becomes hidden (addresses background playback)
+  // Pause speech when tab becomes hidden
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden && isSpeaking) {
@@ -386,7 +392,6 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
         jumpToChapter(prevIndex);
     }
   }, [currentChapterIndex, jumpToChapter]);
-
 
   const skip = useCallback((charOffset: number) => {
     const shouldResume = isSpeaking || isPaused;
@@ -432,20 +437,41 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
 
     const finalChunkLength = chapterChunks.current[chapterIdx]?.[chunkIdx]?.length ?? 0;
     const finalCharIndex = Math.max(0, Math.min(targetCharInChunk, finalChunkLength));
-
+    
+    setCurrentChapterIndex(chapterIdx);
+    setCurrentChunkIndex(chunkIdx);
+    setCurrentCharIndex(finalCharIndex);
+    
     if (shouldResume) {
         setTimeout(() => play(chapterIdx, chunkIdx, finalCharIndex), 50);
-    } else {
-        setCurrentChapterIndex(chapterIdx);
-        setCurrentChunkIndex(chunkIdx);
-        setCurrentCharIndex(finalCharIndex);
     }
-  }, [isSpeaking, isPaused, currentChapterIndex, currentChunkIndex, currentCharIndex, play, chapters.length]);
-  
 
+  }, [isSpeaking, isPaused, currentChapterIndex, currentChunkIndex, currentCharIndex, play, chapters.length]);
+
+  const stopAndPrepareForResume = () => {
+    if (utteranceRef.current) {
+        // Prevent the onend callback from firing on cancel, which could cause a jump to the next chunk.
+        utteranceRef.current.onend = null;
+    }
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
+    setIsPaused(true);
+  };
+
+  const handleRateChange = (newRate: number) => {
+    if (isSpeaking) {
+        stopAndPrepareForResume();
+    }
+    setPlaybackRate(newRate);
+  };
+  
   useEffect(() => {
-    return () => cancel();
-  }, [cancel]);
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
   const currentChunkText = useMemo(() => {
     return chapterChunks.current[currentChapterIndex]?.[currentChunkIndex] || '';
@@ -477,7 +503,7 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     currentChunkText,
     chapterProgressPercentage,
     play,
-    pause: () => pause(false), // Expose a version that always saves progress
+    pause: () => pause(false),
     resume,
     jumpToChapter,
     skip,
@@ -487,7 +513,7 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     selectedVoiceURI,
     setSelectedVoiceURI,
     playbackRate,
-    setPlaybackRate,
+    setPlaybackRate: handleRateChange,
     handleNextChapter,
     handlePrevChapter,
     isProgressLoading,

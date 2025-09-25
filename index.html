@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LUKPALEELIBROS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class', // Habilitar modo oscuro basado en clases
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Helvetica', 'Arial', 'sans-serif'],
+            },
+            colors: {
+              // Light Mode Colors
+              'light-bg': '#ffffff',
+              'dark-text': '#111827', // Almost black
+              'card-bg': '#f9fafb', // Off-white
+              'border-color': '#e5e7eb',
+              'subtle-text': '#6b7280',
+              'primary-accent': '#111827',
+              'primary-accent-hover': '#374151',
+
+              // Dark Mode Colors
+              'dark-bg': '#111111',
+              'light-text': '#f9fafb', // Off-white
+              'dark-card-bg': '#1f1f1f',
+              'dark-border-color': '#374151',
+              'dark-subtle-text': '#9ca3af',
+              'dark-primary-accent': '#ffffff',
+              'dark-primary-accent-hover': '#e5e7eb',
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Custom styles for accessible progress bars */
+      progress {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        border: none;
+        background-color: transparent;
+      }
+      /* Webkit-based browsers (Chrome, Safari, Edge) */
+      progress::-webkit-progress-bar {
+        background-color: #e5e7eb; /* border-color */
+        border-radius: 9999px;
+      }
+      progress::-webkit-progress-value {
+        background-color: #111827; /* dark-text */
+        border-radius: 9999px;
+        transition: all 0.3s;
+      }
+      /* Firefox */
+      progress::-moz-progress-bar {
+        background-color: #111827; /* dark-text */
+        border-radius: 9999px;
+        transition: all 0.3s;
+      }
+      /* Dark Mode Styles */
+      .dark progress::-webkit-progress-bar {
+        background-color: #374151; /* dark-border-color */
+      }
+      .dark progress::-webkit-progress-value {
+        background-color: #f9fafb; /* light-text */
+      }
+       .progress-chapter::-webkit-progress-bar {
+        background-color: rgba(229, 231, 235, 0.7); /* border-color/70 */
+      }
+      .dark .progress-chapter::-webkit-progress-bar {
+        background-color: rgba(55, 65, 81, 0.7); /* dark-border-color/70 */
+      }
+      .progress-chapter::-webkit-progress-value {
+        background-color: rgba(17, 24, 39, 0.7); /* dark-text/70 */
+      }
+       .dark .progress-chapter::-webkit-progress-value {
+        background-color: rgba(249, 250, 251, 0.7); /* light-text/70 */
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
+  }
+}
+</script>
+</head>
+  <body class="bg-light-bg dark:bg-dark-bg text-dark-text dark:text-light-text font-sans">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

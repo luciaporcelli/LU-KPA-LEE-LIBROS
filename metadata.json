@@ -1,0 +1,5 @@
+{
+  "name": "LUKPA LEE LIBROS",
+  "description": "Una aplicación web intuitiva que convierte archivos EPUB en audiolibros. Sube tu archivo y la aplicación generará el audio, proporcionando un reproductor simple con controles para reproducir, pausar y navegar. Tu progreso de escucha se guarda automáticamente en tu navegador.",
+  "requestFramePermissions": []
+}

@@ -26,12 +26,6 @@ const chunkText = (text: string): string[] => {
   return chunks;
 };
 
-const postMessageToSw = (message: any) => {
-  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.controller.postMessage(message);
-  }
-};
-
 export const useSpeechSynthesis = (epubData: EpubData | null) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -377,36 +371,6 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     return () => clearInterval(intervalId);
   }, [sleepTimer, isSpeaking, pause]);
   
-  // SW Communication
-  useEffect(() => {
-    postMessageToSw({
-        command: 'updateState',
-        payload: {
-            title: epubData?.title,
-            coverUrl: epubData?.coverUrl,
-            isSpeaking: isSpeaking && !isPaused,
-            currentChapterIndex,
-        }
-    });
-  }, [epubData, isSpeaking, isPaused, currentChapterIndex]);
-
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-        const { command, payload } = event.data;
-        switch (command) {
-            case 'resume': resume(); break;
-            case 'pause': pause(); break;
-            case 'nextChapter': handleNextChapter(); break;
-            case 'prevChapter': handlePrevChapter(); break;
-            case 'skip': skip(payload.seconds); break;
-        }
-    };
-    navigator.serviceWorker.addEventListener('message', handleMessage);
-    return () => {
-        navigator.serviceWorker.removeEventListener('message', handleMessage);
-    };
-  }, [resume, pause, handleNextChapter, handlePrevChapter, skip]);
-
   const currentChunkText = useMemo(() => {
     return chapterChunks[currentChapterIndex]?.[currentChunkIndex] || '';
   }, [currentChapterIndex, currentChunkIndex, chapterChunks]);

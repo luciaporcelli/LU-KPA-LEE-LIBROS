@@ -85,30 +85,29 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
     }
   });
 
-  const handlePlayPause = useCallback(() => {
+  // Effect to manage silent audio for background playback
+  useEffect(() => {
     const audio = silentAudioRef.current;
     if (!audio) return;
 
+    if (isSpeaking && audio.paused) {
+      audio.play().catch(e => {
+        if (e.name !== 'AbortError') {
+          console.error("Error al reproducir audio silencioso:", e);
+        }
+      });
+    } else if (!isSpeaking && !audio.paused) {
+      audio.pause();
+    }
+  }, [isSpeaking]);
+
+  const handlePlayPause = useCallback(() => {
     if (isSpeaking) {
       pause();
-      if (!audio.paused) {
-        audio.pause();
-      }
-    } else { // Covers isPaused and stopped states
-      if (isPaused) {
-        resume();
-      } else {
-        play(currentChapterIndex, currentChunkIndex);
-      }
-
-      if (audio.paused) {
-        audio.play().catch(e => {
-            // This error is expected if the user rapidly clicks play/pause. It can be safely ignored.
-            if (e.name !== 'AbortError') {
-                 console.error("Error al reproducir audio silencioso:", e);
-            }
-        });
-      }
+    } else if (isPaused) {
+      resume();
+    } else {
+      play(currentChapterIndex, currentChunkIndex);
     }
   }, [isSpeaking, isPaused, pause, resume, play, currentChapterIndex, currentChunkIndex]);
 
@@ -301,10 +300,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
                     <li className="hover:bg-gray-100 dark:hover:bg-gray-700"><button onClick={() => handleSetTimer(30 * 60)} className="w-full text-left px-3 py-1.5">30 minutos</button></li>
                     <li className="hover:bg-gray-100 dark:hover:bg-gray-700"><button onClick={() => handleSetTimer(60 * 60)} className="w-full text-left px-3 py-1.5">60 minutos</button></li>
                     <li className="hover:bg-gray-100 dark:hover:bg-gray-700"><button onClick={() => handleSetTimer('end-of-chapter')} className="w-full text-left px-3 py-1.5">Fin del capítulo</button></li>
-                    {sleepTimer && <>
+                    {sleepTimer && <React.Fragment>
                       <li className="h-px bg-border-color dark:bg-dark-border-color my-1"></li>
                       <li className="hover:bg-gray-100 dark:hover:bg-gray-700"><button onClick={() => handleSetTimer(null)} className="w-full text-left px-3 py-1.5 font-bold">Desactivar</button></li>
-                    </>}
+                    </React.Fragment>}
                   </ul>
                 </div>
               )}

@@ -74,18 +74,34 @@ export const PlusIcon: React.FC<IconProps> = (props) => (
     </svg>
 );
 
-const iconStyle = { fontSize: '7px', fontWeight: 'bold' as const };
-
 export const Replay15Icon: React.FC<IconProps> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
         <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
-        <text x="12" y="14.5" textAnchor="middle" style={iconStyle} fill="currentColor">15</text>
+        <text
+            x="12"
+            y="14.5"
+            textAnchor="middle"
+            fontSize="7px"
+            fontWeight="bold"
+            fill="currentColor"
+        >
+            15
+        </text>
     </svg>
 );
 
 export const Forward15Icon: React.FC<IconProps> = (props) => (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" {...props}>
         <path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h-2c0 2.21-1.79 4-4 4s-4-1.79-4-4 1.79-4 4-4v-2z"/>
-        <text x="12" y="14.5" textAnchor="middle" style={iconStyle} fill="currentColor">15</text>
+        <text
+            x="12"
+            y="14.5"
+            textAnchor="middle"
+            fontSize="7px"
+            fontWeight="bold"
+            fill="currentColor"
+        >
+            15
+        </text>
     </svg>
 );

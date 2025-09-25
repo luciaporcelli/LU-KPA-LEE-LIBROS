@@ -20,7 +20,7 @@ const Library: React.FC<LibraryProps> = ({ books, onSelectBook, onAddBook, onDel
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-dark-text dark:text-light-text mb-6">Mi Biblioteca</h2>
+      <h2 className="text-xl sm:text-2xl font-bold text-dark-text dark:text-light-text mb-6">Mi Biblioteca</h2>
       {books.length === 0 ? (
          <button 
             type="button"
@@ -32,7 +32,7 @@ const Library: React.FC<LibraryProps> = ({ books, onSelectBook, onAddBook, onDel
             <p className="text-subtle-text dark:text-dark-subtle-text mt-1">Haz clic aquí para añadir tu primer libro.</p>
         </button>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {books.map(book => (
             <div key={book.filename} className="group relative">
                 <button 

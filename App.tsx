@@ -130,7 +130,7 @@ const App: React.FC = () => {
         >
             {theme === 'dark' ? <SunIcon className="w-6 h-6" /> : <MoonIcon className="w-6 h-6" />}
         </button>
-        <header className="text-center mb-8">
+        <header className="text-center mb-6 sm:mb-8">
           <h1 className="text-4xl sm:text-5xl font-light text-dark-text dark:text-light-text tracking-tight uppercase">
             LUKPALEE<span className="font-bold">LIBROS</span>
           </h1>
@@ -138,7 +138,7 @@ const App: React.FC = () => {
             Convierte tus ebooks en audiolibros, al instante.
           </p>
         </header>
-        <main className="bg-card-bg dark:bg-dark-card-bg rounded-xl shadow-lg p-6 sm:p-8">
+        <main className="bg-card-bg dark:bg-dark-card-bg rounded-xl shadow-lg p-4 sm:p-8">
           {renderContent()}
         </main>
         <footer className="text-center mt-8 text-subtle-text dark:text-dark-subtle-text text-sm">

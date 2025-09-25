@@ -73,10 +73,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onFileSelect, onCancel }) => {
         role="button"
         tabIndex={0}
         aria-label="Zona para arrastrar y soltar o hacer clic para seleccionar un archivo EPUB"
-        className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-primary-accent dark:focus:ring-dark-primary-accent ${isDragging ? 'border-primary-accent bg-gray-100 dark:border-dark-primary-accent dark:bg-dark-card-bg' : 'border-border-color dark:border-dark-border-color hover:border-dark-text dark:hover:border-light-text'}`}
+        className={`border-2 border-dashed rounded-lg p-6 sm:p-8 text-center transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-primary-accent dark:focus:ring-dark-primary-accent ${isDragging ? 'border-primary-accent bg-gray-100 dark:border-dark-primary-accent dark:bg-dark-card-bg' : 'border-border-color dark:border-dark-border-color hover:border-dark-text dark:hover:border-light-text'}`}
         >
         <div className="flex flex-col items-center justify-center space-y-4">
-            <UploadIcon className="w-16 h-16 text-subtle-text" />
+            <UploadIcon className="w-12 h-12 sm:w-16 sm:h-16 text-subtle-text" />
             <p className="text-subtle-text dark:text-dark-subtle-text">
             <span className="font-semibold text-dark-text dark:text-light-text">Haz clic para subir</span> o arrastra y suelta
             </p>

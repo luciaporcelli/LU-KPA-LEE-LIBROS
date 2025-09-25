@@ -123,13 +123,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
   }
 
   return (
-    <div className="flex flex-col items-center space-y-6" aria-labelledby="book-title">
+    <div className="flex flex-col items-center space-y-4 sm:space-y-6" aria-labelledby="book-title">
        <button onClick={onBackToLibrary} className="self-start flex items-center space-x-2 text-subtle-text dark:text-dark-subtle-text hover:text-dark-text dark:hover:text-light-text transition-colors">
             <ArrowLeftIcon className="w-5 h-5" />
             <span>Volver a la Biblioteca</span>
         </button>
 
-      <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-lg shadow-md overflow-hidden flex items-center justify-center bg-gray-100 dark:bg-dark-bg">
+      <div className="w-40 h-40 sm:w-56 sm:h-56 rounded-lg shadow-md overflow-hidden flex items-center justify-center bg-gray-100 dark:bg-dark-bg">
         {coverUrl ? (
           <img src={coverUrl} alt={`Portada de ${title}`} className="w-full h-full object-cover" />
         ) : (
@@ -138,7 +138,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
       </div>
 
       <div className="text-center">
-        <h2 id="book-title" className="text-2xl font-bold text-dark-text dark:text-light-text">{title}</h2>
+        <h2 id="book-title" className="text-xl sm:text-2xl font-bold text-dark-text dark:text-light-text">{title}</h2>
         <div className="flex items-center justify-center space-x-2 mt-1">
             <p className="text-subtle-text dark:text-dark-subtle-text">Capítulo {currentChapterIndex + 1} de {totalChapters}</p>
         </div>
@@ -184,7 +184,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
         id="current-text-display"
         aria-live="assertive"
         aria-atomic="true"
-        className="w-full max-w-sm h-40 overflow-y-auto bg-light-bg dark:bg-dark-bg rounded-lg p-4 text-dark-text dark:text-light-text text-left border border-border-color dark:border-dark-border-color"
+        className="w-full max-w-sm h-32 sm:h-40 overflow-y-auto bg-light-bg dark:bg-dark-bg rounded-lg p-4 text-dark-text dark:text-light-text text-left border border-border-color dark:border-dark-border-color"
       >
         {currentChunkText ? (
           <p className="leading-relaxed">
@@ -201,10 +201,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
       {error && <p className="text-red-500 text-sm text-center" role="alert">{error}</p>}
       
       {/* Controls */}
-      <div className="w-full max-w-sm flex items-center justify-around">
+      <div className="w-full max-w-sm flex items-center justify-between sm:justify-around">
         <button onClick={handlePrevChapter} aria-label="Capítulo anterior" className="flex flex-col items-center text-subtle-text dark:text-dark-subtle-text hover:text-dark-text dark:hover:text-light-text transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled={currentChapterIndex === 0}>
-            <RewindIcon className="w-10 h-10" />
-            <span className="text-xs font-semibold mt-1 uppercase tracking-wider">Cap. Anterior</span>
+            <RewindIcon className="w-8 h-8 sm:w-10 sm:h-10" />
+            <span className="text-xs font-semibold mt-1 uppercase tracking-wider hidden sm:block">Cap. Anterior</span>
         </button>
 
         <div className="flex items-center justify-center space-x-4">
@@ -226,16 +226,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
         </div>
         
         <button onClick={handleNextChapter} aria-label="Siguiente capítulo" className="flex flex-col items-center text-subtle-text dark:text-dark-subtle-text hover:text-dark-text dark:hover:text-light-text transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled={currentChapterIndex >= totalChapters - 1}>
-            <ForwardIcon className="w-10 h-10" />
-            <span className="text-xs font-semibold mt-1 uppercase tracking-wider">Próximo Cap.</span>
+            <ForwardIcon className="w-8 h-8 sm:w-10 sm:h-10" />
+            <span className="text-xs font-semibold mt-1 uppercase tracking-wider hidden sm:block">Próximo Cap.</span>
         </button>
       </div>
 
 
       {/* Settings */}
       {(voices && voices.length > 0) && (
-        <div className="w-full max-w-sm flex items-center justify-center space-x-4 pt-4 border-t border-border-color dark:border-dark-border-color mt-4">
-           <div className="flex-1">
+        <div className="w-full max-w-sm flex flex-col sm:flex-row sm:items-end space-y-6 sm:space-y-0 sm:space-x-4 pt-4 border-t border-border-color dark:border-dark-border-color mt-4">
+           <div className="w-full sm:flex-1">
             <label htmlFor="voice-select" className="block text-sm font-medium text-subtle-text dark:text-dark-subtle-text mb-1">Voz</label>
             <select
                 id="voice-select"
@@ -250,7 +250,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
                 ))}
             </select>
            </div>
-           <div className="flex-1">
+           <div className="w-full sm:flex-1">
                 <label htmlFor="rate-slider" className="block text-sm font-medium text-subtle-text dark:text-dark-subtle-text mb-1">Velocidad ({playbackRate.toFixed(1)}x)</label>
                 <input
                     id="rate-slider"
@@ -263,8 +263,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
                     className="w-full h-2 bg-border-color rounded-lg appearance-none cursor-pointer dark:bg-dark-border-color accent-primary-accent dark:accent-dark-primary-accent"
                 />
            </div>
-           <div className="relative" ref={timerMenuRef}>
-              <label className="block text-sm font-medium text-subtle-text dark:text-dark-subtle-text mb-1 text-center">Timer</label>
+           <div className="relative w-full sm:w-auto flex flex-col items-center" ref={timerMenuRef}>
+              <label className="block text-sm font-medium text-subtle-text dark:text-dark-subtle-text mb-1">Timer</label>
               <button 
                 onClick={() => setIsTimerMenuOpen(prev => !prev)} 
                 className={`p-2 rounded-md transition-colors ${sleepTimer ? 'text-primary-accent dark:text-dark-primary-accent' : 'text-subtle-text dark:text-dark-subtle-text'} hover:bg-gray-200 dark:hover:bg-gray-700`}
@@ -278,7 +278,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
                 </span>
               )}
               {isTimerMenuOpen && (
-                <div className="absolute bottom-full right-0 mb-2 w-48 bg-card-bg dark:bg-dark-card-bg rounded-lg shadow-xl border border-border-color dark:border-dark-border-color z-10">
+                <div className="absolute bottom-full right-0 sm:right-auto mb-2 w-48 bg-card-bg dark:bg-dark-card-bg rounded-lg shadow-xl border border-border-color dark:border-dark-border-color z-10">
                   <ul className="py-1">
                     <li className="px-3 py-1 text-xs text-subtle-text dark:text-dark-subtle-text">Parar Audio En...</li>
                     <li className="hover:bg-gray-100 dark:hover:bg-gray-700"><button onClick={() => handleSetTimer(15 * 60)} className="w-full text-left px-3 py-1.5">15 minutos</button></li>

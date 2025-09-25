@@ -313,7 +313,10 @@ export const useSpeechSynthesis = (epubData: EpubData | null) => {
     };
 
     utterance.onerror = (event) => {
-      if (event.error === 'interrupted') {
+      // 'canceled' and 'interrupted' are expected behaviors in this app, not errors.
+      // 'canceled' happens when we intentionally stop speech (e.g., skip chapter, skip time).
+      // 'interrupted' can happen if a new speech command is issued before the old one finishes.
+      if (event.error === 'interrupted' || event.error === 'canceled') {
         return;
       }
       console.error('SpeechSynthesisUtterance.onerror', event);

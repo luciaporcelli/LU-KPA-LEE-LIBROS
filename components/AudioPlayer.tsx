@@ -77,6 +77,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
 
   const [isTimerMenuOpen, setIsTimerMenuOpen] = useState(false);
   const timerMenuRef = useRef<HTMLDivElement>(null);
+  const silentAudioRef = useRef<HTMLAudioElement>(null);
 
   useClickOutside(timerMenuRef, () => {
     if (isTimerMenuOpen) {
@@ -85,20 +86,22 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
   });
 
   const handlePlayPause = useCallback(() => {
+    const audio = silentAudioRef.current;
     if (isSpeaking) {
       pause();
+      audio?.pause();
     } else if (isPaused) {
       resume();
+      audio?.play().catch(e => console.error("Error al reproducir audio silencioso:", e));
     } else {
       play(currentChapterIndex, currentChunkIndex);
+      audio?.play().catch(e => console.error("Error al reproducir audio silencioso:", e));
     }
   }, [isSpeaking, isPaused, pause, resume, play, currentChapterIndex, currentChunkIndex]);
 
   const handleSkipSeconds = useCallback((seconds: number) => {
-    // Estimación: ~15 caracteres por segundo a velocidad 1x.
-    const charsPerSecond = 15 * playbackRate;
-    skip(Math.round(seconds * charsPerSecond));
-  }, [skip, playbackRate]);
+    skip(seconds);
+  }, [skip]);
 
 
   const progressPercentage = useMemo(() => {
@@ -295,6 +298,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ epubData, onBackToLibrary }) 
            </div>
         </div>
       )}
+      <audio ref={silentAudioRef} loop src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=" aria-hidden="true" />
     </div>
   );
 };
